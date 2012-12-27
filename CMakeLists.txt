@@ -27,11 +27,18 @@ link_directories(${PYTHON_LIBRARIES})
 find_package( Classad REQUIRED )
 include_directories(${CLASSAD_INCLUDES})
 
-add_library(classad SHARED
+add_library(pyclassad SHARED
         src/classad.cpp
+        src/classad_wrapper.h
+    )
+
+add_library(classad SHARED
+        src/classad_module.cpp
     )
 # Note we change the library prefix to produce "testboost" instead of
 # "libtestboost", following python convention.
 set_target_properties(classad PROPERTIES PREFIX "")
-target_link_libraries(classad ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} ${CLASSAD_LIB})
+
+target_link_libraries(classad ${Boost_LIBRARIES} ${PYTHON_LIBRARIES}
+${CLASSAD_LIB} pyclassad)
 

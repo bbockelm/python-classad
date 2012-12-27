@@ -1,140 +1,135 @@
 
 #include <string>
 
-#include <classad_wrapper.h>
 #include <classad/source.h>
 #include <classad/sink.h>
 
-std::string ClassadLibraryVersion()
+#include "classad_wrapper.h"
+#include "exprtree_wrapper.h"
+
+
+ExprTreeHolder::ExprTreeHolder(const std::string &str)
+    : m_expr(NULL), m_owns(true)
 {
-    std::string val;
-    classad::ClassAdLibraryVersion(val);
-    return val;
+    classad::ClassAdParser parser;
+    classad::ExprTree *expr = NULL;
+    if (!parser.ParseExpression(str, expr))
+    {
+        PyErr_SetString(PyExc_SyntaxError, "Unable to parse string into a ClassAd.");
+        boost::python::throw_error_already_set();
+    }
+    m_expr = expr;
 }
 
-struct ExprTreeHolder
+
+ExprTreeHolder::ExprTreeHolder(classad::ExprTree *expr)
+     : m_expr(expr), m_owns(false)
+{}
+
+
+ExprTreeHolder::~ExprTreeHolder()
 {
-    ExprTreeHolder(const std::string &str)
-        : m_expr(NULL), m_owns(true)
-    {
-        classad::ClassAdParser parser;
-        classad::ExprTree *expr = NULL;
-        if (!parser.ParseExpression(str, expr))
-        {
-            PyErr_SetString(PyExc_SyntaxError, "Unable to parse string into a ClassAd.");
-            boost::python::throw_error_already_set();
-        }
-        m_expr = expr;
-    }
+    if (m_owns && m_expr) delete m_expr;
+}
 
-    ExprTreeHolder(classad::ExprTree *expr) : m_expr(expr), m_owns(false)
-    {}
 
-    ~ExprTreeHolder()
+boost::python::object ExprTreeHolder::Evaluate() const
+{
+    if (!m_expr)
     {
-        if (m_owns && m_expr) delete m_expr;
-    }
-
-    boost::python::object Evaluate() const
-    {
-        if (!m_expr)
-        {
             PyErr_SetString(PyExc_RuntimeError, "Cannot operate on an invalid ExprTree");
             boost::python::throw_error_already_set();
-        }
-        classad::Value value;
-        if (!m_expr->Evaluate(value)) {
+    }
+    classad::Value value;
+    if (!m_expr->Evaluate(value)) {
             PyErr_SetString(PyExc_SyntaxError, "Unable to evaluate expression");
             boost::python::throw_error_already_set();
-        }
-        boost::python::object result;
-        std::string strvalue;
-        long long intvalue;
-        bool boolvalue;
-        double realvalue;
-        PyObject* obj;
-        switch (value.GetType())
-        {
-        case classad::Value::BOOLEAN_VALUE:
-            value.IsBooleanValue(boolvalue);
-            obj = boolvalue ? Py_True : Py_False;
-            result = boost::python::object(boost::python::handle<>(boost::python::borrowed(obj)));
-            break;
-        case classad::Value::STRING_VALUE:
-            value.IsStringValue(strvalue);
-            result = boost::python::str(strvalue);
-            break;
-        case classad::Value::ABSOLUTE_TIME_VALUE:
-        case classad::Value::INTEGER_VALUE:
-            value.IsIntegerValue(intvalue);
-            result = boost::python::long_(intvalue);
-            break;
-        case classad::Value::RELATIVE_TIME_VALUE:
-        case classad::Value::REAL_VALUE:
-            value.IsRealValue(realvalue);
-            result = boost::python::object(realvalue);
-            break;
-        case classad::Value::ERROR_VALUE:
-            result = boost::python::object(classad::Value::ERROR_VALUE);
-            break;
-        case classad::Value::UNDEFINED_VALUE:
-            result = boost::python::object(classad::Value::UNDEFINED_VALUE);
-            break;
-        default:
-            PyErr_SetString(PyExc_TypeError, "Unknown ClassAd value type.");
-            boost::python::throw_error_already_set();
-        }
-        return result;
     }
-
-    std::string toRepr()
+    boost::python::object result;
+    std::string strvalue;
+    long long intvalue;
+    bool boolvalue;
+    double realvalue;
+    PyObject* obj;
+    switch (value.GetType())
     {
-        if (!m_expr)
-        {
-            PyErr_SetString(PyExc_RuntimeError, "Cannot operate on an invalid ExprTree");
-            boost::python::throw_error_already_set();
-        }
-        classad::ClassAdUnParser up;
-        std::string ad_str;
-        up.Unparse(ad_str, m_expr);
-        return ad_str;
+    case classad::Value::BOOLEAN_VALUE:
+        value.IsBooleanValue(boolvalue);
+        obj = boolvalue ? Py_True : Py_False;
+        result = boost::python::object(boost::python::handle<>(boost::python::borrowed(obj)));
+        break;
+    case classad::Value::STRING_VALUE:
+        value.IsStringValue(strvalue);
+        result = boost::python::str(strvalue);
+        break;
+    case classad::Value::ABSOLUTE_TIME_VALUE:
+    case classad::Value::INTEGER_VALUE:
+        value.IsIntegerValue(intvalue);
+        result = boost::python::long_(intvalue);
+        break;
+    case classad::Value::RELATIVE_TIME_VALUE:
+    case classad::Value::REAL_VALUE:
+        value.IsRealValue(realvalue);
+        result = boost::python::object(realvalue);
+        break;
+    case classad::Value::ERROR_VALUE:
+        result = boost::python::object(classad::Value::ERROR_VALUE);
+        break;
+    case classad::Value::UNDEFINED_VALUE:
+        result = boost::python::object(classad::Value::UNDEFINED_VALUE);
+        break;
+    default:
+        PyErr_SetString(PyExc_TypeError, "Unknown ClassAd value type.");
+        boost::python::throw_error_already_set();
     }
+    return result;
+}
 
-    std::string toString()
+
+std::string ExprTreeHolder::toRepr()
+{
+    if (!m_expr)
     {
-        if (!m_expr)
-        {
-            PyErr_SetString(PyExc_RuntimeError, "Cannot operate on an invalid ExprTree");
-            boost::python::throw_error_already_set();
-        }
-        classad::PrettyPrint pp;
-        std::string ad_str;
-        pp.Unparse(ad_str, m_expr);
-        return ad_str;
+        PyErr_SetString(PyExc_RuntimeError, "Cannot operate on an invalid ExprTree");
+        boost::python::throw_error_already_set();
     }
+    classad::ClassAdUnParser up;
+    std::string ad_str;
+    up.Unparse(ad_str, m_expr);
+    return ad_str;
+}
 
-    classad::ExprTree *get()
+
+std::string ExprTreeHolder::toString()
+{
+    if (!m_expr)
     {
-        if (!m_expr)
-        {
-            PyErr_SetString(PyExc_RuntimeError, "Cannot operate on an invalid ExprTree");
-            boost::python::throw_error_already_set();
-        }
-        return m_expr->Copy();
+        PyErr_SetString(PyExc_RuntimeError, "Cannot operate on an invalid ExprTree");
+        boost::python::throw_error_already_set();
     }
+    classad::PrettyPrint pp;
+    std::string ad_str;
+    pp.Unparse(ad_str, m_expr);
+    return ad_str;
+}
 
-    classad::ExprTree *m_expr;
-    bool m_owns;
-};
+
+classad::ExprTree *ExprTreeHolder::get()
+{
+    if (!m_expr)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Cannot operate on an invalid ExprTree");
+        boost::python::throw_error_already_set();
+    }
+    return m_expr->Copy();
+}
+
 
 AttrPair::result_type AttrPair::operator()(AttrPair::argument_type p) const
 {
     return boost::python::make_tuple<std::string, boost::python::object>(p.first, boost::python::object(ExprTreeHolder(p.second)));
 }
 
-void *convert_to_FILEptr(PyObject* obj) {
-    return PyFile_Check(obj) ? PyFile_AsFile(obj) : 0;
-}
 
 boost::python::object ClassAdWrapper::LookupWrap( const std::string &attr) const
 {
@@ -150,6 +145,7 @@ boost::python::object ClassAdWrapper::LookupWrap( const std::string &attr) const
     return result;
 }
 
+
 boost::python::object ClassAdWrapper::EvaluateAttrObject(const std::string &attr) const
 {
     classad::ExprTree *expr;
@@ -160,6 +156,7 @@ boost::python::object ClassAdWrapper::EvaluateAttrObject(const std::string &attr
     ExprTreeHolder holder(expr);
     return holder.Evaluate();
 }
+
 
 void ClassAdWrapper::InsertAttrObject( const std::string &attr, boost::python::object value)
 {
@@ -237,6 +234,7 @@ void ClassAdWrapper::InsertAttrObject( const std::string &attr, boost::python::o
     boost::python::throw_error_already_set();
 }
 
+
 std::string ClassAdWrapper::toRepr()
 {
     classad::ClassAdUnParser up;
@@ -244,6 +242,7 @@ std::string ClassAdWrapper::toRepr()
     up.Unparse(ad_str, this);
     return ad_str;
 }
+
 
 std::string ClassAdWrapper::toString()
 {
@@ -253,27 +252,33 @@ std::string ClassAdWrapper::toString()
     return ad_str;
 }
 
+
 AttrKeyIter ClassAdWrapper::beginKeys()
 {
     return AttrKeyIter(begin());
 }
+
 
 AttrKeyIter ClassAdWrapper::endKeys()
 {
     return AttrKeyIter(end());
 }
 
+
 AttrItemIter ClassAdWrapper::beginItems()
 {
     return AttrItemIter(begin());
 }
+
 
 AttrItemIter ClassAdWrapper::endItems()
 {
     return AttrItemIter(end());
 }
 
+
 ClassAdWrapper::ClassAdWrapper() : classad::ClassAd() {}
+
 
 ClassAdWrapper::ClassAdWrapper(const std::string &str)
 {
@@ -286,75 +291,5 @@ ClassAdWrapper::ClassAdWrapper(const std::string &str)
     }
     CopyFrom(*result);
     result;
-}
-
-ClassAdWrapper *parseString(const std::string &str)
-{
-    classad::ClassAdParser parser;
-    classad::ClassAd *result = parser.ParseClassAd(str);
-    if (!result)
-    {
-        PyErr_SetString(PyExc_SyntaxError, "Unable to parse string into a ClassAd.");
-        boost::python::throw_error_already_set();
-    }
-    ClassAdWrapper * wrapper_result = new ClassAdWrapper();
-    wrapper_result->CopyFrom(*result);
-    delete result;
-    return wrapper_result;
-}
-
-ClassAdWrapper *parseFile(FILE *stream)
-{
-    classad::ClassAdParser parser;
-    classad::ClassAd *result = parser.ParseClassAd(stream);
-    if (!result)
-    {
-        PyErr_SetString(PyExc_SyntaxError, "Unable to parse input stream into a ClassAd.");
-    }
-    ClassAdWrapper * wrapper_result = new ClassAdWrapper();
-    wrapper_result->CopyFrom(*result);
-    delete result;
-    return wrapper_result;
-}
-
-BOOST_PYTHON_MODULE(classad)
-{
-    using namespace boost::python;
-
-    def("version", ClassadLibraryVersion);
-
-    def("parse", parseString, return_value_policy<manage_new_object>());
-    def("parse", parseFile, return_value_policy<manage_new_object>());
-
-    class_<ClassAdWrapper, boost::noncopyable>("ClassAd")
-        .def(init<std::string>())
-        .def("__delitem__", &ClassAdWrapper::Delete)
-        .def("__getitem__", &ClassAdWrapper::LookupWrap)
-        .def("eval", &ClassAdWrapper::EvaluateAttrObject)
-        .def("__setitem__", &ClassAdWrapper::InsertAttrObject)
-        .def("__str__", &ClassAdWrapper::toString)
-        .def("__repr__", &ClassAdWrapper::toRepr)
-        // I see no way to use the SetParentScope interface safely.
-        // Delay exposing it to python until we absolutely have to!
-        //.def("setParentScope", &ClassAdWrapper::SetParentScope)
-        .def("__iter__", boost::python::range(&ClassAdWrapper::beginKeys, &ClassAdWrapper::endKeys))
-        .def("keys", boost::python::range(&ClassAdWrapper::beginKeys, &ClassAdWrapper::endKeys))
-        .def("items", boost::python::range(&ClassAdWrapper::beginItems, &ClassAdWrapper::endItems))
-        ;
-
-    class_<ExprTreeHolder>("ExprTree", init<std::string>())
-        .def("__str__", &ExprTreeHolder::toString)
-        .def("__repr__", &ExprTreeHolder::toRepr)
-        .def("eval", &ExprTreeHolder::Evaluate)
-        ;
-
-    boost::python::enum_<classad::Value::ValueType>("Value")
-        .value("Error", classad::Value::ERROR_VALUE)
-        .value("Undefined", classad::Value::UNDEFINED_VALUE)
-        ;
-
-    boost::python::converter::registry::insert(convert_to_FILEptr,
-        boost::python::type_id<FILE>(),
-        &boost::python::converter::wrap_pytype<&PyFile_Type>::get_pytype);
 }
 

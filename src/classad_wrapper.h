@@ -1,4 +1,7 @@
 
+#ifndef __CLASSAD_WRAPPER_H_
+#define __CLASSAD_WRAPPER_H_
+
 #include <classad/classad.h>
 #include <boost/python.hpp>
 #include <boost/iterator/transform_iterator.hpp>
@@ -46,4 +49,6 @@ struct ClassAdWrapper : classad::ClassAd, boost::python::wrapper<classad::ClassA
 
     ClassAdWrapper(const std::string &str);
 };
+
+#endif
 

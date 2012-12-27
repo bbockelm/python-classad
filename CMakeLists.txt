@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 2.6)
 set( CMAKE_MODULE_PATH
  ${PROJECT_SOURCE_DIR}/cmake )
 
+include_directories(${PROJECT_SOURCE_DIR}/src)
+
 # Uncomment the below line to help find boost.
 #set(Boost_DEBUG             ON)
 # On RHEL6, you'll need boost-python and boost-devel

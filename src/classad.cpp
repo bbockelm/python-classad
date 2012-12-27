@@ -1,11 +1,9 @@
 
 #include <string>
 
-#include <classad/classad.h>
-#include <classad/sink.h>
+#include <classad_wrapper.h>
 #include <classad/source.h>
-#include <boost/python.hpp>
-#include <boost/iterator/transform_iterator.hpp>
+#include <classad/sink.h>
 
 std::string ClassadLibraryVersion()
 {
@@ -13,16 +11,6 @@ std::string ClassadLibraryVersion()
     classad::ClassAdLibraryVersion(val);
     return val;
 }
-
-struct AttrPairToFirst :
-  public std::unary_function<std::pair<std::string, classad::ExprTree*> const&, std::string>
-{
-  AttrPairToFirst::result_type operator()(AttrPairToFirst::argument_type p) const
-  {
-    return p.first;
-  }
-};
-typedef boost::transform_iterator<AttrPairToFirst, classad::AttrList::iterator> AttrKeyIter;
 
 struct ExprTreeHolder
 {
@@ -139,178 +127,166 @@ struct ExprTreeHolder
     bool m_owns;
 };
 
-struct AttrPair :
-  public std::unary_function<std::pair<std::string, classad::ExprTree*> const&, boost::python::object>
+AttrPair::result_type AttrPair::operator()(AttrPair::argument_type p) const
 {
-  AttrPair::result_type operator()(AttrPair::argument_type p) const
-  {
     return boost::python::make_tuple<std::string, boost::python::object>(p.first, boost::python::object(ExprTreeHolder(p.second)));
-  }
-};
-typedef boost::transform_iterator<AttrPair, classad::AttrList::iterator> AttrItemIter;
-
-// Forward decls
-struct ClassAdWrapper;
-ClassAdWrapper *parseString(const std::string &str);
+}
 
 void *convert_to_FILEptr(PyObject* obj) {
     return PyFile_Check(obj) ? PyFile_AsFile(obj) : 0;
 }
 
-struct ClassAdWrapper : classad::ClassAd, boost::python::wrapper<classad::ClassAd>
+boost::python::object ClassAdWrapper::LookupWrap( const std::string &attr) const
 {
-    boost::python::object LookupWrap( const std::string &attr) const
+    classad::ExprTree * expr = Lookup(attr);
+    if (!expr)
     {
-        classad::ExprTree * expr = Lookup(attr);
-        if (!expr)
-        {
-            PyErr_SetString(PyExc_KeyError, attr.c_str());
-            boost::python::throw_error_already_set();
-        }
-        if (expr->GetKind() == classad::ExprTree::LITERAL_NODE) return EvaluateAttrObject(attr);
-        ExprTreeHolder holder(expr);
-        boost::python::object result(holder);
-        return result;
-    }
-
-    boost::python::object EvaluateAttrObject(const std::string &attr) const
-    {
-        classad::ExprTree *expr;
-        if (!(expr = Lookup(attr))) {
-            PyErr_SetString(PyExc_KeyError, attr.c_str());
-            boost::python::throw_error_already_set();
-        }
-        ExprTreeHolder holder(expr);
-        return holder.Evaluate();
-    }
-
-    void InsertAttrObject( const std::string &attr, boost::python::object value)
-    {
-        boost::python::extract<ExprTreeHolder&> expr_obj(value);
-        if (expr_obj.check())
-        {
-            classad::ExprTree *expr = expr_obj().get();
-            Insert(attr, expr);
-            return;
-        }
-        boost::python::extract<classad::Value::ValueType> value_enum_obj(value);
-        if (value_enum_obj.check())
-        {
-            classad::Value::ValueType value_enum = value_enum_obj();
-            classad::Value classad_value;
-            if (value_enum == classad::Value::ERROR_VALUE)
-            {
-                classad_value.SetErrorValue();
-                classad::ExprTree *lit = classad::Literal::MakeLiteral(classad_value);
-                Insert(attr, lit);
-            }
-            else if (value_enum == classad::Value::UNDEFINED_VALUE)
-            {
-                classad_value.SetUndefinedValue();
-                classad::ExprTree *lit = classad::Literal::MakeLiteral(classad_value);
-                if (!Insert(attr, lit))
-                {
-                    PyErr_SetString(PyExc_AttributeError, attr.c_str());
-                    boost::python::throw_error_already_set();
-                }
-            }
-            return;
-        }
-        if (PyString_Check(value.ptr()))
-        {
-            std::string cppvalue = boost::python::extract<std::string>(value);
-            if (!InsertAttr(attr, cppvalue))
-            {
-                PyErr_SetString(PyExc_AttributeError, attr.c_str());
-                boost::python::throw_error_already_set();
-            }
-            return;
-        }
-        if (PyLong_Check(value.ptr()))
-        {
-            long long cppvalue = boost::python::extract<long long>(value);
-            if (!InsertAttr(attr, cppvalue))
-            {
-                PyErr_SetString(PyExc_AttributeError, attr.c_str());
-                boost::python::throw_error_already_set();
-            }
-            return;
-        }
-        if (PyInt_Check(value.ptr()))
-        {
-            long int cppvalue = boost::python::extract<long int>(value);
-            if (!InsertAttr(attr, cppvalue))
-            {
-                PyErr_SetString(PyExc_AttributeError, attr.c_str());
-                boost::python::throw_error_already_set();
-            }
-            return;
-        }
-        if (PyFloat_Check(value.ptr()))
-        {
-            double cppvalue = boost::python::extract<double>(value);
-            if (!InsertAttr(attr, cppvalue))
-            {
-                PyErr_SetString(PyExc_AttributeError, attr.c_str());
-                boost::python::throw_error_already_set();
-            }
-            return;
-        }
-        PyErr_SetString(PyExc_TypeError, "Unknown ClassAd value type.");
+        PyErr_SetString(PyExc_KeyError, attr.c_str());
         boost::python::throw_error_already_set();
     }
+    if (expr->GetKind() == classad::ExprTree::LITERAL_NODE) return EvaluateAttrObject(attr);
+    ExprTreeHolder holder(expr);
+    boost::python::object result(holder);
+    return result;
+}
 
-    std::string toRepr()
-    {
-        classad::ClassAdUnParser up;
-        std::string ad_str;
-        up.Unparse(ad_str, this);
-        return ad_str;
+boost::python::object ClassAdWrapper::EvaluateAttrObject(const std::string &attr) const
+{
+    classad::ExprTree *expr;
+    if (!(expr = Lookup(attr))) {
+        PyErr_SetString(PyExc_KeyError, attr.c_str());
+        boost::python::throw_error_already_set();
     }
+    ExprTreeHolder holder(expr);
+    return holder.Evaluate();
+}
 
-    std::string toString()
+void ClassAdWrapper::InsertAttrObject( const std::string &attr, boost::python::object value)
+{
+    boost::python::extract<ExprTreeHolder&> expr_obj(value);
+    if (expr_obj.check())
     {
-        classad::PrettyPrint pp;
-        std::string ad_str;
-        pp.Unparse(ad_str, this);
-        return ad_str;
+        classad::ExprTree *expr = expr_obj().get();
+        Insert(attr, expr);
+        return;
     }
-
-    AttrKeyIter beginKeys()
+    boost::python::extract<classad::Value::ValueType> value_enum_obj(value);
+    if (value_enum_obj.check())
     {
-        return AttrKeyIter(begin());
-    }
-
-    AttrKeyIter endKeys()
-    {
-        return AttrKeyIter(end());
-    }
-
-    AttrItemIter beginItems()
-    {
-        return AttrItemIter(begin());
-    }
-
-    AttrItemIter endItems()
-    {
-        return AttrItemIter(end());
-    }
-
-    ClassAdWrapper() : classad::ClassAd() {}
-
-    ClassAdWrapper(const std::string &str)
-    {
-        classad::ClassAdParser parser;
-        classad::ClassAd *result = parser.ParseClassAd(str);
-        if (!result)
+        classad::Value::ValueType value_enum = value_enum_obj();
+        classad::Value classad_value;
+        if (value_enum == classad::Value::ERROR_VALUE)
         {
-            PyErr_SetString(PyExc_SyntaxError, "Unable to parse string into a ClassAd.");
+            classad_value.SetErrorValue();
+            classad::ExprTree *lit = classad::Literal::MakeLiteral(classad_value);
+            Insert(attr, lit);
+        }
+        else if (value_enum == classad::Value::UNDEFINED_VALUE)
+        {
+            classad_value.SetUndefinedValue();
+            classad::ExprTree *lit = classad::Literal::MakeLiteral(classad_value);
+            if (!Insert(attr, lit))
+            {
+                PyErr_SetString(PyExc_AttributeError, attr.c_str());
+                boost::python::throw_error_already_set();
+            }
+        }
+        return;
+    }
+    if (PyString_Check(value.ptr()))
+    {
+        std::string cppvalue = boost::python::extract<std::string>(value);
+        if (!InsertAttr(attr, cppvalue))
+        {
+            PyErr_SetString(PyExc_AttributeError, attr.c_str());
             boost::python::throw_error_already_set();
         }
-        CopyFrom(*result);
-        delete result;
+        return;
     }
-};
+    if (PyLong_Check(value.ptr()))
+    {
+        long long cppvalue = boost::python::extract<long long>(value);
+        if (!InsertAttr(attr, cppvalue))
+        {
+            PyErr_SetString(PyExc_AttributeError, attr.c_str());
+            boost::python::throw_error_already_set();
+        }
+        return;
+    }
+    if (PyInt_Check(value.ptr()))
+    {
+        long int cppvalue = boost::python::extract<long int>(value);
+        if (!InsertAttr(attr, cppvalue))
+        {
+            PyErr_SetString(PyExc_AttributeError, attr.c_str());
+            boost::python::throw_error_already_set();
+        }
+        return;
+    }
+    if (PyFloat_Check(value.ptr()))
+    {
+        double cppvalue = boost::python::extract<double>(value);
+        if (!InsertAttr(attr, cppvalue))
+        {
+            PyErr_SetString(PyExc_AttributeError, attr.c_str());
+            boost::python::throw_error_already_set();
+        }
+        return;
+    }
+    PyErr_SetString(PyExc_TypeError, "Unknown ClassAd value type.");
+    boost::python::throw_error_already_set();
+}
+
+std::string ClassAdWrapper::toRepr()
+{
+    classad::ClassAdUnParser up;
+    std::string ad_str;
+    up.Unparse(ad_str, this);
+    return ad_str;
+}
+
+std::string ClassAdWrapper::toString()
+{
+    classad::PrettyPrint pp;
+    std::string ad_str;
+    pp.Unparse(ad_str, this);
+    return ad_str;
+}
+
+AttrKeyIter ClassAdWrapper::beginKeys()
+{
+    return AttrKeyIter(begin());
+}
+
+AttrKeyIter ClassAdWrapper::endKeys()
+{
+    return AttrKeyIter(end());
+}
+
+AttrItemIter ClassAdWrapper::beginItems()
+{
+    return AttrItemIter(begin());
+}
+
+AttrItemIter ClassAdWrapper::endItems()
+{
+    return AttrItemIter(end());
+}
+
+ClassAdWrapper::ClassAdWrapper() : classad::ClassAd() {}
+
+ClassAdWrapper::ClassAdWrapper(const std::string &str)
+{
+    classad::ClassAdParser parser;
+    classad::ClassAd *result = parser.ParseClassAd(str);
+    if (!result)
+    {
+        PyErr_SetString(PyExc_SyntaxError, "Unable to parse string into a ClassAd.");
+        boost::python::throw_error_already_set();
+    }
+    CopyFrom(*result);
+    result;
+}
 
 ClassAdWrapper *parseString(const std::string &str)
 {

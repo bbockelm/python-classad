@@ -53,12 +53,15 @@ BOOST_PYTHON_MODULE(classad)
 {
     using namespace boost::python;
 
-    def("version", ClassadLibraryVersion);
+    def("version", ClassadLibraryVersion, "Return the version of the linked ClassAd library.");
 
     def("parse", parseString, return_value_policy<manage_new_object>());
-    def("parse", parseFile, return_value_policy<manage_new_object>());
+    def("parse", parseFile, return_value_policy<manage_new_object>(),
+        "Parse input into a ClassAd.\n"
+        ":param input: A string or a file pointer.\n"
+        ":return: A ClassAd object.");
 
-    class_<ClassAdWrapper, boost::noncopyable>("ClassAd")
+    class_<ClassAdWrapper, boost::noncopyable>("ClassAd", "A classified advertisement.")
         .def(init<std::string>())
         .def("__delitem__", &ClassAdWrapper::Delete)
         .def("__getitem__", &ClassAdWrapper::LookupWrap)
@@ -74,7 +77,7 @@ BOOST_PYTHON_MODULE(classad)
         .def("items", boost::python::range(&ClassAdWrapper::beginItems, &ClassAdWrapper::endItems))
         ;
 
-    class_<ExprTreeHolder>("ExprTree", init<std::string>())
+    class_<ExprTreeHolder>("ExprTree", "An expression in the ClassAd language", init<std::string>())
         .def("__str__", &ExprTreeHolder::toString)
         .def("__repr__", &ExprTreeHolder::toRepr)
         .def("eval", &ExprTreeHolder::Evaluate)

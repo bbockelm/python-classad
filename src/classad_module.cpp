@@ -37,6 +37,7 @@ ClassAdWrapper *parseFile(FILE *stream)
     if (!result)
     {
         PyErr_SetString(PyExc_SyntaxError, "Unable to parse input stream into a ClassAd.");
+        boost::python::throw_error_already_set();
     }
     ClassAdWrapper * wrapper_result = new ClassAdWrapper();
     wrapper_result->CopyFrom(*result);

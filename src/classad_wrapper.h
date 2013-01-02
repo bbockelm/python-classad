@@ -17,6 +17,16 @@ struct AttrPairToFirst :
 
 typedef boost::transform_iterator<AttrPairToFirst, classad::AttrList::iterator> AttrKeyIter;
 
+class ExprTreeHolder;
+
+struct AttrPairToSecond :
+  public std::unary_function<std::pair<std::string, classad::ExprTree*> const&, boost::python::object>
+{   
+  AttrPairToSecond::result_type operator()(AttrPairToSecond::argument_type p) const;
+};
+
+typedef boost::transform_iterator<AttrPairToSecond, classad::AttrList::iterator> AttrValueIter;
+
 struct AttrPair :
   public std::unary_function<std::pair<std::string, classad::ExprTree*> const&, boost::python::object>
 {
@@ -40,6 +50,10 @@ struct ClassAdWrapper : classad::ClassAd, boost::python::wrapper<classad::ClassA
     AttrKeyIter beginKeys();
 
     AttrKeyIter endKeys();
+
+    AttrValueIter beginValues();
+
+    AttrValueIter endValues();
 
     AttrItemIter beginItems();
 

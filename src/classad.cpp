@@ -124,10 +124,27 @@ classad::ExprTree *ExprTreeHolder::get()
     return m_expr->Copy();
 }
 
+AttrPairToSecond::result_type AttrPairToSecond::operator()(AttrPairToSecond::argument_type p) const
+{
+    ExprTreeHolder holder(p.second);
+    if (p.second->GetKind() == classad::ExprTree::LITERAL_NODE)
+    {
+        return holder.Evaluate();
+    }
+    boost::python::object result(holder);
+    return result;
+} 
+
 
 AttrPair::result_type AttrPair::operator()(AttrPair::argument_type p) const
 {
-    return boost::python::make_tuple<std::string, boost::python::object>(p.first, boost::python::object(ExprTreeHolder(p.second)));
+    ExprTreeHolder holder(p.second);
+    boost::python::object result(holder);
+    if (p.second->GetKind() == classad::ExprTree::LITERAL_NODE)
+    {
+        result = holder.Evaluate();
+    }
+    return boost::python::make_tuple<std::string, boost::python::object>(p.first, result);
 }
 
 
@@ -264,6 +281,15 @@ AttrKeyIter ClassAdWrapper::endKeys()
     return AttrKeyIter(end());
 }
 
+AttrValueIter ClassAdWrapper::beginValues()
+{
+    return AttrValueIter(begin());
+}
+
+AttrValueIter ClassAdWrapper::endValues()
+{
+    return AttrValueIter(end());
+}
 
 AttrItemIter ClassAdWrapper::beginItems()
 {

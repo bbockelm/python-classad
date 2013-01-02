@@ -75,7 +75,9 @@ BOOST_PYTHON_MODULE(classad)
         //.def("setParentScope", &ClassAdWrapper::SetParentScope)
         .def("__iter__", boost::python::range(&ClassAdWrapper::beginKeys, &ClassAdWrapper::endKeys))
         .def("keys", boost::python::range(&ClassAdWrapper::beginKeys, &ClassAdWrapper::endKeys))
+        .def("values", boost::python::range(&ClassAdWrapper::beginValues, &ClassAdWrapper::endValues))
         .def("items", boost::python::range(&ClassAdWrapper::beginItems, &ClassAdWrapper::endItems))
+        .def("__len__", &ClassAdWrapper::size)
         ;
 
     class_<ExprTreeHolder>("ExprTree", "An expression in the ClassAd language", init<std::string>())

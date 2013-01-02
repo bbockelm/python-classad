@@ -50,6 +50,19 @@ class TestClassad(unittest.TestCase):
         self.assertNotEqual(ad["foo"].eval(), ad["bar"])
         self.assertEqual(classad.Value.Undefined, ad["bar"])
 
+    def test_ad_iterator(self):
+        ad = classad.ClassAd()
+        ad["foo"] = 1
+        ad["bar"] = 2
+        self.assertEqual(len(ad), 2)
+        self.assertEqual(len(list(ad)), 2)
+        self.assertEqual(list(ad)[1], "foo")
+        self.assertEqual(list(ad)[0], "bar")
+        self.assertEqual(list(ad.items())[1][1], 1)
+        self.assertEqual(list(ad.items())[0][1], 2)
+        self.assertEqual(list(ad.values())[1], 1)
+        self.assertEqual(list(ad.values())[0], 2)
+
 if __name__ == '__main__':
     unittest.main()
 

@@ -92,7 +92,6 @@ BOOST_PYTHON_MODULE(classad)
         ;
 
     boost::python::converter::registry::insert(convert_to_FILEptr,
-        boost::python::type_id<FILE>(),
-        &boost::python::converter::wrap_pytype<&PyFile_Type>::get_pytype);
+        boost::python::type_id<FILE>());
 }
 

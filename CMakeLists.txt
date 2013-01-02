@@ -11,7 +11,6 @@ include_directories(${PROJECT_SOURCE_DIR}/src)
 # On RHEL6, you'll need boost-python and boost-devel
 set(Boost_USE_MULTITHREADED ON)
 find_package(Boost COMPONENTS
-                system
                 thread
                 python
              REQUIRED)

@@ -148,7 +148,7 @@ AttrPair::result_type AttrPair::operator()(AttrPair::argument_type p) const
 }
 
 
-boost::python::object ClassAdWrapper::LookupWrap( const std::string &attr) const
+boost::python::object ClassAdWrapper::LookupWrap(const std::string &attr) const
 {
     classad::ExprTree * expr = Lookup(attr);
     if (!expr)
@@ -162,6 +162,18 @@ boost::python::object ClassAdWrapper::LookupWrap( const std::string &attr) const
     return result;
 }
 
+boost::python::object ClassAdWrapper::LookupExpr(const std::string &attr) const
+{
+    classad::ExprTree * expr = Lookup(attr);
+    if (!expr)
+    {
+        PyErr_SetString(PyExc_KeyError, attr.c_str());
+        boost::python::throw_error_already_set();
+    }
+    ExprTreeHolder holder(expr);
+    boost::python::object result(holder);
+    return result;
+}
 
 boost::python::object ClassAdWrapper::EvaluateAttrObject(const std::string &attr) const
 {
@@ -269,6 +281,14 @@ std::string ClassAdWrapper::toString()
     return ad_str;
 }
 
+std::string ClassAdWrapper::toOldString()
+{
+    classad::ClassAdUnParser pp;
+    std::string ad_str;
+    pp.SetOldClassAd(true);
+    pp.Unparse(ad_str, this);
+    return ad_str;
+}
 
 AttrKeyIter ClassAdWrapper::beginKeys()
 {

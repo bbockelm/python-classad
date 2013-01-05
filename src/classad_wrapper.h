@@ -43,9 +43,13 @@ struct ClassAdWrapper : classad::ClassAd, boost::python::wrapper<classad::ClassA
 
     void InsertAttrObject( const std::string &attr, boost::python::object value);
 
+    boost::python::object LookupExpr(const std::string &attr) const;
+
     std::string toRepr();
 
     std::string toString();
+
+    std::string toOldString();
 
     AttrKeyIter beginKeys();
 

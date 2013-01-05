@@ -12,6 +12,11 @@ class TestClassad(unittest.TestCase):
         self.assertEqual(ad["baz"], classad.Value.Undefined)
         self.assertRaises(KeyError, ad.__getitem__, "bar")
 
+    def test_old_classad(self):
+        ad = classad.parseOld(open("tests/test.old.ad"))
+        contents = open("tests/test.old.ad").read()
+        self.assertEqual(ad.printOld(), contents)
+
     def test_exprtree(self):
         ad = classad.ClassAd()
         ad["foo"] = classad.ExprTree("2+2")
@@ -62,6 +67,12 @@ class TestClassad(unittest.TestCase):
         self.assertEqual(list(ad.items())[0][1], 2)
         self.assertEqual(list(ad.values())[1], 1)
         self.assertEqual(list(ad.values())[0], 2)
+
+    def test_ad_lookup(self):
+        ad = classad.ClassAd()
+        ad["foo"] = classad.Value.Error
+        self.assertTrue(isinstance(ad.lookup("foo"), classad.ExprTree))
+        self.assertEquals(ad.lookup("foo").eval(), classad.Value.Error)
 
 if __name__ == '__main__':
     unittest.main()

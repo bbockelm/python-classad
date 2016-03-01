@@ -12,11 +12,6 @@ class TestClassad(unittest.TestCase):
         self.assertEqual(ad["baz"], classad.Value.Undefined)
         self.assertRaises(KeyError, ad.__getitem__, "bar")
 
-    def test_old_classad(self):
-        ad = classad.parseOld(open("tests/test.old.ad"))
-        contents = open("tests/test.old.ad").read()
-        self.assertEqual(ad.printOld(), contents)
-
     def test_exprtree(self):
         ad = classad.ClassAd()
         ad["foo"] = classad.ExprTree("2+2")

@@ -18,7 +18,7 @@ Building requires the following:
 
 ## RHEL 6+
 
-    yum install cmake boost-devel boost-python htcondor-classads-devel python-devel
+    yum install cmake boost-devel boost-python condor-classads-devel python-devel
 
 # Building
 
